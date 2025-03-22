@@ -1,44 +1,90 @@
+/* Global Styles */
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #1e3c72, #2a5298);
+    color: white;
     text-align: center;
-    background-color: #f4f4f4;
     padding: 20px;
 }
 
-form {
+.container {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(10px);
+}
+
+/* Title */
+.title {
+    font-weight: bold;
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+/* Form Styling */
+.investment-form {
     margin-bottom: 20px;
 }
 
 input {
-    padding: 8px;
-    margin: 5px;
-    width: 200px;
-}
-
-button {
-    padding: 10px 15px;
-    background-color: #007BFF;
-    color: white;
+    padding: 12px;
+    border-radius: 8px;
     border: none;
-    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
-button:hover {
-    background-color: #0056b3;
+.btn-custom {
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: bold;
+    background: #ff7b54;
+    color: white;
+    border-radius: 8px;
+    transition: 0.3s;
 }
 
+.btn-custom:hover {
+    background: #ff5733;
+    transform: scale(1.05);
+}
+
+/* Table Styling */
 table {
-    width: 50%;
-    margin: 0 auto;
+    width: 100%;
     border-collapse: collapse;
+    margin-top: 20px;
 }
 
 th, td {
-    border: 1px solid black;
-    padding: 10px;
+    padding: 15px;
+    text-align: center;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 th {
-    background-color: #007BFF;
+    background: rgba(255, 255, 255, 0.2);
     color: white;
+    font-weight: bold;
+}
+
+/* Hover Effect */
+tr:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+
+    .title {
+        font-size: 1.5rem;
+    }
+
+    input {
+        width: 100%;
+        margin-bottom: 10px;
+    }
 }

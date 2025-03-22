@@ -3,33 +3,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Risk Analyzer</title>
+    <title>InvestGuard - Investment Risk Analyzer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<h1>Risk Analyzer</h1>
+<div class="container mt-5">
+    <h1 class="text-center title">📊 InvestGuard - Investment Risk Analyzer</h1>
 
-<!-- Investment Form -->
-<form id="investmentForm">
-    <input type="text" id="ticker" placeholder="Stock Ticker (e.g., AAPL)" required>
-    <input type="number" id="amount" placeholder="Investment Amount" required>
-    <input type="text" id="pastReturns" placeholder="Past Returns (e.g., 0.05,0.02,-0.01)" required>
-    <button type="submit">Add Investment</button>
-</form>
+    <form id="investmentForm" class="investment-form">
+        <div class="row">
+            <div class="col-md-4">
+                <input type="text" id="ticker" class="form-control" placeholder="Stock Ticker (e.g., AAPL)" required>
+            </div>
+            <div class="col-md-4">
+                <input type="number" id="amount" class="form-control" placeholder="Investment Amount" required>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-lg btn-custom">➕ Add Investment</button>
+            </div>
+        </div>
+    </form>
 
-<!-- Risk Analysis Table -->
-<h2>Investment Risk Analysis</h2>
-<table id="riskTable">
-    <thead>
-    <tr>
-        <th>Stock</th>
-        <th>Risk (Std Dev)</th>
-    </tr>
-    </thead>
-    <tbody>
-    <!-- Risk data will be inserted here -->
-    </tbody>
-</table>
+    <h2 class="mt-5">📈 Investment Risk Analysis</h2>
+    <table class="table table-hover mt-3">
+        <thead>
+        <tr>
+            <th>Stock</th>
+            <th>Risk (Std Dev)</th>
+        </tr>
+        </thead>
+        <tbody id="riskTable">
+        <!-- Data inserted here -->
+        </tbody>
+    </table>
+</div>
 
 <script src="script.js"></script>
 </body>
