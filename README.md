@@ -23,7 +23,6 @@
 - **Java 17**, **Spring Boot** (REST API & Static Frontend)
 - **Maven** (Dependency Management)
 - **H2 Database** *(for fast and efficient storage)*
-- **JUnit** *(For Testing)*
 
 ### **💻 Frontend (Served by Spring Boot)**
 - **HTML, CSS, JavaScript**
@@ -102,17 +101,10 @@ GET /api/risk
 
 ## **👨‍💻 Author**
 **Negar** – *Backend & Frontend Developer*  
-🔗 **GitHub:** [YourGitHubProfile](https://github.com/YOUR_GITHUB)  
-📧 **Email:** your.email@example.com  
+🔗 **GitHub:** [YourGitHubProfile](https://github.com/negarprh)  
+📧 **Email:** negarpr@hotmail.com  
 
 ---
 
 ## **📜 License**
 This project is **MIT Licensed** – Feel free to use and modify!  
-
-📌 **Next Steps:**  
-✅ **Commit this `README.md` to GitHub**  
-✅ **Upload screenshots (`website.png` in repo)**  
-✅ **Share your project on LinkedIn for visibility!**  
-
-🚀 **Now your project is CV-ready! Let me know if you need any last-minute edits.** 🔥
