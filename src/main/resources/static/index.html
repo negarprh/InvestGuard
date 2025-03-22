@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Risk Analyzer</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<h1>Risk Analyzer</h1>
+
+<!-- Investment Form -->
+<form id="investmentForm">
+    <input type="text" id="ticker" placeholder="Stock Ticker (e.g., AAPL)" required>
+    <input type="number" id="amount" placeholder="Investment Amount" required>
+    <input type="text" id="pastReturns" placeholder="Past Returns (e.g., 0.05,0.02,-0.01)" required>
+    <button type="submit">Add Investment</button>
+</form>
+
+<!-- Risk Analysis Table -->
+<h2>Investment Risk Analysis</h2>
+<table id="riskTable">
+    <thead>
+    <tr>
+        <th>Stock</th>
+        <th>Risk (Std Dev)</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- Risk data will be inserted here -->
+    </tbody>
+</table>
+
+<script src="script.js"></script>
+</body>
+</html>
