@@ -3,12 +3,7 @@
 
 > **"Analyze investment risk and make informed financial decisions with real-time risk assessment."**  
 
-![InvestGuard Banner](https://source.unsplash.com/1600x400/?finance,stocks)  
-
----
-
-## **🔗 Live Demo (If Hosted)**
-🌍 **[Live Version](https://yourdeploymentlink.com)**  
+![InvestGuard Banner](website.png)  
 
 ---
 
@@ -18,29 +13,28 @@
 ### **✨ Features**
 ✅ **Add Investment Data** – Enter stock tickers, investment amounts, and past returns.  
 ✅ **Risk Calculation** – Uses **standard deviation** to measure investment volatility.  
-✅ **Sharpe Ratio Analysis** – (Future Feature) Evaluates **risk-adjusted returns**.  
 ✅ **Simple UI** – Built using **HTML, CSS, and JavaScript**, served by Spring Boot.  
 ✅ **REST API** – Scalable backend for risk computation.  
 
 ---
 
 ## **🛠️ Tech Stack**
-### **🚀 Backend (Full Stack in Spring Boot)**
+### **🚀 Backend (Spring Boot)**
 - **Java 17**, **Spring Boot** (REST API & Static Frontend)
 - **Maven** (Dependency Management)
-- **H2 Database** *(or SQLite for persistence)*
+- **H2 Database** *(for fast and efficient storage)*
 - **JUnit** *(For Testing)*
 
 ### **💻 Frontend (Served by Spring Boot)**
 - **HTML, CSS, JavaScript**
 - **Fetch API** *(for REST API calls)*
-- **Static Resources in `src/main/resources/static/`*
+- **Bootstrap UI for clean design**
 
 ---
 
 ## **📸 Screenshots**
 ### **📊 Dashboard & Risk Analysis**
-<img src="https://source.unsplash.com/800x400/?charts,finance" width="80%">
+<img src="website.png" width="80%">
 
 ---
 
@@ -48,7 +42,7 @@
 ### **1️⃣ Clone the Repository**
 ```sh
 git clone https://github.com/negarprh/InvestGuard.git
-cd RiskWise
+cd InvestGuard
 ```
 
 ### **2️⃣ Run the Application (Spring Boot)**
@@ -71,7 +65,7 @@ Since the frontend is inside **Spring Boot's `static/` folder**, it's **automati
 ## **📡 API Endpoints**
 ### **➕ Add Investment**
 ```http
-POST /api/add?ticker=AAPL&amount=5000&pastReturns=0.05,0.02,-0.01,0.04,0.03
+POST /api/add-stock?ticker=AAPL&amount=5000
 ```
 ✅ **Response**
 ```json
@@ -88,6 +82,10 @@ GET /api/risk
     {
         "Investment": "AAPL",
         "Risk (Std Dev)": 0.025
+    },
+    {
+        "Investment": "MSFT",
+        "Risk (Std Dev)": 0.020
     }
 ]
 ```
@@ -95,9 +93,10 @@ GET /api/risk
 ---
 
 ## **📝 Future Improvements**
-🔹 Fetch **real stock data** via an API (Yahoo Finance, Alpha Vantage)  
+🔹 Expand **financial risk analysis metrics** beyond standard deviation  
 🔹 Store investment data in **MySQL/PostgreSQL**  
 🔹 Add a **Sharpe Ratio calculator** for risk-adjusted returns  
+🔹 Implement **user authentication** for secure portfolio management  
 
 ---
 
@@ -113,7 +112,7 @@ This project is **MIT Licensed** – Feel free to use and modify!
 
 📌 **Next Steps:**  
 ✅ **Commit this `README.md` to GitHub**  
-✅ **Upload screenshots (`/assets/` folder)**  
+✅ **Upload screenshots (`website.png` in repo)**  
 ✅ **Share your project on LinkedIn for visibility!**  
 
-🚀 **Let me know if you need any modifications!** 🔥
+🚀 **Now your project is CV-ready! Let me know if you need any last-minute edits.** 🔥
