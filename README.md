@@ -3,7 +3,7 @@
 
 > **"Analyze investment risk and make informed financial decisions with real-time risk assessment."**  
 
-![InvestGuard Banner](website.png)  
+![InvestGuard Banner](mainpage.png)  
 
 ---
 
@@ -34,7 +34,7 @@
 
 ## **📸 Screenshots**
 ### **📊 Dashboard & Risk Analysis**
-<img src="website.png" width="80%">
+<img src="mainpage.png" width="80%">
 
 ---
 
