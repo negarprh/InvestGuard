@@ -101,7 +101,7 @@ GET /api/risk
 
 ## **👨‍💻 Author**
 **Negar** – *Backend & Frontend Developer*  
-🔗 **GitHub:** [YourGitHubProfile](https://github.com/negarprh)  
+🔗 **GitHub:** [negarprh](https://github.com/negarprh)  
 📧 **Email:** negarpr@hotmail.com  
 
 ---
