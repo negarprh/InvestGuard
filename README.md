@@ -3,7 +3,7 @@
 
 > **"Analyze investment risk and make informed financial decisions with real-time risk assessment."**  
 
-
+![InvestGuard Banner](website.png)  
 
 ---
 
