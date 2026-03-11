@@ -3,9 +3,11 @@
 InvestGuard is a Spring Boot risk analytics dashboard for equity positions.  
 Add a ticker and position size, and the app pulls live market data from **Finnhub** with automatic fallback to local quote history when candle access is restricted.
 
-![InvestGuard Dashboard](mainpage.png)
+![InvestGuard Dashboard 1](MainPage1.png)
+![InvestGuard Dashboard 2](MainPage2.png)
 
 ## Key Improvements In This Version
+
 - Real-time quote snapshot for each position (price, day move, intraday high/low, volume, market cap)
 - Advanced risk metrics:
   - Annualized return and volatility
@@ -20,12 +22,14 @@ Add a ticker and position size, and the app pulls live market data from **Finnhu
 - Redesigned frontend with filtering, sorting, live risk board, and position detail panel
 
 ## Tech Stack
+
 - Java 17, Spring Boot 3.4
 - Spring Data JPA + H2
 - Finnhub API
 - HTML, CSS, Bootstrap 5, Vanilla JavaScript
 
 ## Run Locally
+
 1. Clone and enter the project:
    ```bash
    git clone https://github.com/negarprh/InvestGuard.git
@@ -43,6 +47,7 @@ Add a ticker and position size, and the app pulls live market data from **Finnhu
    - `http://localhost:8080`
 
 ### Provider API Key
+
 Set your Finnhub key before starting the app:
 
 ```powershell
@@ -65,17 +70,19 @@ curl.exe --get "https://finnhub.io/api/v1/stock/candle" --data-urlencode "symbol
 If quote works but candle returns `{"error":"You don't have access to this resource."}`, InvestGuard now falls back automatically to quote-based local history so `/api/add-stock` still works. Metrics become more stable as more snapshots are collected over time.
 
 ## API Endpoints
-| Endpoint | Method | Description |
-| --- | --- | --- |
-| `/api/add-stock?ticker=X&amount=Y` | `POST` | Adds or updates a position using Finnhub data and recalculates all metrics. |
-| `/api/add-manual` | `POST` | Manual payload support: `{ "ticker":"AAPL", "amount":5000, "pastReturns":[...] }`. |
-| `/api/risk` | `GET` | Returns stored risk summaries. |
-| `/api/risk/live` | `GET` | Refreshes each stored ticker from live market data and returns fresh risk summaries. |
-| `/api/portfolio/summary` | `GET` | Portfolio-level aggregate metrics from stored data. |
-| `/api/portfolio/summary/live` | `GET` | Refreshes live data then returns portfolio aggregate metrics. |
-| `/api/investments` | `GET` | Raw persisted entities, including stored returns. |
+
+| Endpoint                           | Method | Description                                                                          |
+| ---------------------------------- | ------ | ------------------------------------------------------------------------------------ |
+| `/api/add-stock?ticker=X&amount=Y` | `POST` | Adds or updates a position using Finnhub data and recalculates all metrics.          |
+| `/api/add-manual`                  | `POST` | Manual payload support: `{ "ticker":"AAPL", "amount":5000, "pastReturns":[...] }`.   |
+| `/api/risk`                        | `GET`  | Returns stored risk summaries.                                                       |
+| `/api/risk/live`                   | `GET`  | Refreshes each stored ticker from live market data and returns fresh risk summaries. |
+| `/api/portfolio/summary`           | `GET`  | Portfolio-level aggregate metrics from stored data.                                  |
+| `/api/portfolio/summary/live`      | `GET`  | Refreshes live data then returns portfolio aggregate metrics.                        |
+| `/api/investments`                 | `GET`  | Raw persisted entities, including stored returns.                                    |
 
 ## How Risk Is Calculated
+
 For each ticker, the backend builds daily returns from close prices:
 
 `dailyReturn_t = (price_t - price_(t-1)) / price_(t-1)`
@@ -108,6 +115,7 @@ Data source behavior:
 - Fallback: if candle access is denied, app stores daily quote snapshots locally and computes risk from this accumulating local history
 
 ## Risk Configuration (No Hardcoded Constants)
+
 Risk parameters are now configurable in [`src/main/resources/application.yml`](/e:/Categories/Coding/InvestGuard/InvestGuard/src/main/resources/application.yml):
 
 - `investguard.risk.risk-free-rate`
@@ -124,11 +132,13 @@ INVESTGUARD_BENCHMARK_TICKER=QQQ
 ```
 
 ## Notes
+
 - Data provider availability and symbol support depend on Finnhub responses.
 - H2 DB persists locally at `./data/investguard`.
 - H2 console is enabled at `http://localhost:8080/h2-console`.
 
 ## Build & Test
+
 ```bash
 ./mvnw clean test
 ```
