@@ -1,9 +1,9 @@
-# InvestGuard - Live Investment Risk Intelligence
+# InvestGuard - Live Investment Risk Analysis
 
 InvestGuard is a Spring Boot risk analytics dashboard for equity positions.  
 Add a ticker and position size, and the app pulls live market data from **Finnhub** with automatic fallback to local quote history when candle access is restricted.
 
-![InvestGuard Dashboard 1](MainPage1.png)
+![InvestGuard Dashboard 1](Mainpage1.png)
 ![InvestGuard Dashboard 2](MainPage2.png)
 
 ## Key Improvements In This Version
