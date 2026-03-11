@@ -12,4 +12,5 @@ import java.util.Optional;
 public interface MarketPriceSnapshotRepository extends JpaRepository<MarketPriceSnapshot, Long> {
     Optional<MarketPriceSnapshot> findByTickerIgnoreCaseAndTradingDate(String ticker, LocalDate tradingDate);
     List<MarketPriceSnapshot> findAllByTickerIgnoreCaseOrderByTradingDateAsc(String ticker);
+    List<MarketPriceSnapshot> findAllByTickerIgnoreCaseAndTradingDateBetweenOrderByTradingDateAsc(String ticker, LocalDate from, LocalDate to);
 }

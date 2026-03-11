@@ -51,6 +51,69 @@
         </div>
     </section>
 
+    <section class="panel mb-4">
+        <div class="panel-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                <h2 class="section-title mb-0">Performance Replay</h2>
+                <span class="small text-soft">Historical simulation from Finnhub or local snapshots</span>
+            </div>
+            <form id="backtestForm" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="backtestTicker" class="form-label">Ticker</label>
+                    <input type="text" id="backtestTicker" class="form-control" placeholder="AAPL" required>
+                </div>
+                <div class="col-md-3">
+                    <label for="backtestAmount" class="form-label">Initial Investment (USD)</label>
+                    <input type="number" id="backtestAmount" class="form-control" min="1" step="0.01" placeholder="10000" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="backtestStartDate" class="form-label">Start Date</label>
+                    <input type="date" id="backtestStartDate" class="form-control" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="backtestEndDate" class="form-label">End Date (Optional)</label>
+                    <input type="date" id="backtestEndDate" class="form-control">
+                </div>
+                <div class="col-md-2 d-grid">
+                    <button type="submit" class="btn btn-outline-light">Run Replay</button>
+                </div>
+            </form>
+            <p class="small mt-3 mb-0" id="backtestFeedback"></p>
+
+            <div id="backtestResult" class="mt-4" hidden>
+                <div class="row g-3">
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">Current Value</p><p class="metric-value" id="btCurrentValue">-</p></article></div>
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">Total Return</p><p class="metric-value" id="btTotalReturn">-</p></article></div>
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">CAGR</p><p class="metric-value" id="btCagr">-</p></article></div>
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">Max Drawdown</p><p class="metric-value" id="btMaxDrawdown">-</p></article></div>
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">Sharpe</p><p class="metric-value" id="btSharpe">-</p></article></div>
+                    <div class="col-sm-6 col-lg-2"><article class="metric-card h-100"><p class="metric-label">Data Source</p><p class="metric-value text-uppercase" id="btDataSource">-</p></article></div>
+                </div>
+                <div class="mt-3">
+                    <p class="metric-label mb-2">Equity Curve (scaled to real value range)</p>
+                    <div class="backtest-chart-wrap">
+                        <div class="backtest-axis">
+                            <span id="btMaxLabel">-</span>
+                            <span id="btMidLabel">-</span>
+                            <span id="btMinLabel">-</span>
+                        </div>
+                        <svg id="backtestCurve" class="backtest-curve" viewBox="0 0 100 36" preserveAspectRatio="none">
+                            <g id="backtestGrid"></g>
+                            <path id="backtestCurveArea" d=""></path>
+                            <line id="backtestBaseline" x1="0" y1="18" x2="100" y2="18"></line>
+                            <polyline id="backtestCurveLine" points=""></polyline>
+                        </svg>
+                    </div>
+                    <div class="backtest-x-axis">
+                        <span id="btStartLabel">-</span>
+                        <span id="btEndLabel">-</span>
+                    </div>
+                    <p class="metric-sub mt-2 mb-0" id="btRangeText">-</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <section id="summaryCards" class="row g-3 mb-4" hidden>
         <div class="col-sm-6 col-xl-2">
             <article class="metric-card h-100">

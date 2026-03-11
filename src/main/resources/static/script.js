@@ -37,6 +37,26 @@ const detailMarketCapEl = document.getElementById("detailMarketCap");
 const detailBetaEl = document.getElementById("detailBeta");
 const detailEsEl = document.getElementById("detailEs");
 
+const backtestForm = document.getElementById("backtestForm");
+const backtestFeedback = document.getElementById("backtestFeedback");
+const backtestResult = document.getElementById("backtestResult");
+const backtestCurveLine = document.getElementById("backtestCurveLine");
+const backtestCurveArea = document.getElementById("backtestCurveArea");
+const backtestGrid = document.getElementById("backtestGrid");
+const backtestBaseline = document.getElementById("backtestBaseline");
+const btCurrentValueEl = document.getElementById("btCurrentValue");
+const btTotalReturnEl = document.getElementById("btTotalReturn");
+const btCagrEl = document.getElementById("btCagr");
+const btMaxDrawdownEl = document.getElementById("btMaxDrawdown");
+const btSharpeEl = document.getElementById("btSharpe");
+const btDataSourceEl = document.getElementById("btDataSource");
+const btRangeTextEl = document.getElementById("btRangeText");
+const btMaxLabelEl = document.getElementById("btMaxLabel");
+const btMidLabelEl = document.getElementById("btMidLabel");
+const btMinLabelEl = document.getElementById("btMinLabel");
+const btStartLabelEl = document.getElementById("btStartLabel");
+const btEndLabelEl = document.getElementById("btEndLabel");
+
 investmentForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const ticker = document.getElementById("ticker").value.trim().toUpperCase();
@@ -75,6 +95,62 @@ refreshButton.addEventListener("click", async (event) => {
 
 searchInput.addEventListener("input", renderTableAndDetails);
 sortSelect.addEventListener("change", renderTableAndDetails);
+
+backtestForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const ticker = document.getElementById("backtestTicker").value.trim().toUpperCase();
+    const amount = Number.parseFloat(document.getElementById("backtestAmount").value);
+    const startDate = document.getElementById("backtestStartDate").value;
+    const endDate = document.getElementById("backtestEndDate").value;
+
+    if (!ticker || Number.isNaN(amount) || amount <= 0 || !startDate) {
+        setBacktestFeedback("Provide ticker, amount, and start date.", true);
+        return;
+    }
+
+    toggleBacktestState(true);
+    setBacktestFeedback("", false);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/portfolio/backtest`, {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                ticker,
+                amount,
+                startDate,
+                endDate: endDate || ""
+            })
+        });
+
+        if (!response.ok) {
+            throw await buildError(response, "Unable to run replay for this setup.");
+        }
+
+        const result = await response.json();
+        renderBacktest(result);
+
+        const adjustedStart = result?.startDate && result.startDate !== startDate;
+        const adjustedEnd = endDate && result?.endDate && result.endDate !== endDate;
+        if (adjustedStart || adjustedEnd) {
+            setBacktestFeedback(
+                `${ticker} replay completed using available data from ${result.startDate} to ${result.endDate}.`,
+                false
+            );
+        } else {
+            setBacktestFeedback(`${ticker} replay completed.`, false);
+        }
+    } catch (error) {
+        backtestResult.hidden = true;
+        setBacktestFeedback(error.message, true);
+    } finally {
+        toggleBacktestState(false);
+    }
+});
 
 riskTableBody.addEventListener("click", (event) => {
     const row = event.target.closest("tr[data-ticker]");
@@ -259,6 +335,119 @@ function renderDetails(item) {
     detailEsEl.textContent = formatCurrency(item.expectedShortfall);
 }
 
+function renderBacktest(result) {
+    if (!result) {
+        backtestResult.hidden = true;
+        return;
+    }
+
+    backtestResult.hidden = false;
+    btCurrentValueEl.textContent = formatCurrency(result.currentValue);
+    btTotalReturnEl.textContent = formatSignedPercentage(result.totalReturn);
+    btCagrEl.textContent = formatSignedPercentage(result.cagr);
+    btMaxDrawdownEl.textContent = formatSignedPercentage(-Math.abs(result.maxDrawdown));
+    btSharpeEl.textContent = formatNumber(result.sharpeRatio);
+    btDataSourceEl.textContent = prettifyBacktestSource(result.dataSource);
+
+    const startDate = result.startDate || "-";
+    const endDate = result.endDate || "-";
+    btRangeTextEl.textContent =
+        `${startDate} to ${endDate} | Start ${formatCurrency(result.startPrice)} | End ${formatCurrency(result.endPrice)} | Shares ${formatNumber(result.shares)}`;
+
+    drawBacktestCurve(result.history || []);
+}
+
+function drawBacktestCurve(history) {
+    if (!Array.isArray(history) || history.length < 2) {
+        clearBacktestCurve();
+        return;
+    }
+
+    const values = history.map((point) => Number(point.portfolioValue)).filter((value) => Number.isFinite(value));
+    if (values.length < 2) {
+        clearBacktestCurve();
+        return;
+    }
+
+    const rawMin = Math.min(...values);
+    const rawMax = Math.max(...values);
+    const firstValue = values[0];
+    const minVisualRange = Math.max(Math.abs(firstValue) * 0.08, 50);
+    let min = rawMin;
+    let max = rawMax;
+    if ((max - min) < minVisualRange) {
+        const center = (max + min) / 2;
+        min = center - (minVisualRange / 2);
+        max = center + (minVisualRange / 2);
+    }
+
+    const pad = (max - min) * 0.08;
+    const plotMin = min - pad;
+    const plotMax = max + pad;
+    const plotRange = Math.max(plotMax - plotMin, 1e-9);
+    const chartTop = 2;
+    const chartBottom = 34;
+
+    const mapped = values.map((value, index) => {
+        const x = (index / (values.length - 1)) * 100;
+        const y = chartBottom - ((value - plotMin) / plotRange) * (chartBottom - chartTop);
+        return { x, y };
+    });
+
+    backtestCurveLine.setAttribute(
+        "points",
+        mapped.map((point) => `${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ")
+    );
+
+    const firstPoint = mapped[0];
+    const lastPoint = mapped[mapped.length - 1];
+    const linePath = mapped.map((point, index) => `${index === 0 ? "M" : "L"}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
+    const areaPath = `${linePath} L${lastPoint.x.toFixed(2)},${chartBottom} L${firstPoint.x.toFixed(2)},${chartBottom} Z`;
+    backtestCurveArea.setAttribute("d", areaPath);
+
+    const baselineY = chartBottom - ((firstValue - plotMin) / plotRange) * (chartBottom - chartTop);
+    backtestBaseline.setAttribute("y1", baselineY.toFixed(2));
+    backtestBaseline.setAttribute("y2", baselineY.toFixed(2));
+
+    const mid = (plotMax + plotMin) / 2;
+    btMaxLabelEl.textContent = formatCurrency(plotMax);
+    btMidLabelEl.textContent = formatCurrency(mid);
+    btMinLabelEl.textContent = formatCurrency(plotMin);
+
+    btStartLabelEl.textContent = formatShortDate(history[0].date);
+    btEndLabelEl.textContent = formatShortDate(history[history.length - 1].date);
+
+    const lines = [chartTop, (chartTop + chartBottom) / 2, chartBottom];
+    backtestGrid.innerHTML = lines
+        .map((y) => `<line x1="0" y1="${y.toFixed(2)}" x2="100" y2="${y.toFixed(2)}"></line>`)
+        .join("");
+}
+
+function clearBacktestCurve() {
+    backtestCurveLine.setAttribute("points", "");
+    backtestCurveArea.setAttribute("d", "");
+    backtestBaseline.setAttribute("y1", "18");
+    backtestBaseline.setAttribute("y2", "18");
+    backtestGrid.innerHTML = "";
+    btMaxLabelEl.textContent = "-";
+    btMidLabelEl.textContent = "-";
+    btMinLabelEl.textContent = "-";
+    btStartLabelEl.textContent = "-";
+    btEndLabelEl.textContent = "-";
+}
+
+function toggleBacktestState(disabled) {
+    Array.from(backtestForm.elements).forEach((element) => {
+        element.disabled = disabled;
+    });
+}
+
+function setBacktestFeedback(message, isError) {
+    backtestFeedback.textContent = message || "";
+    backtestFeedback.classList.toggle("feedback-error", !!message && isError);
+    backtestFeedback.classList.toggle("feedback-success", !!message && !isError);
+}
+
 function toggleFormState(disabled) {
     Array.from(investmentForm.elements).forEach((element) => {
         element.disabled = disabled;
@@ -376,6 +565,21 @@ function formatTimestamp(value) {
     });
 }
 
+function formatShortDate(value) {
+    if (!value) {
+        return "-";
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+    return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+    });
+}
+
 function abbreviateCurrency(value, currency) {
     if (value === null || value === undefined || Number.isNaN(value)) {
         return "-";
@@ -452,6 +656,17 @@ function numberOrZero(value) {
     return Number.isFinite(value) ? value : 0;
 }
 
+function prettifyBacktestSource(value) {
+    const source = String(value || "").toUpperCase();
+    if (source === "FINNHUB_CANDLE") {
+        return "Finnhub Candle";
+    }
+    if (source === "LOCAL_SNAPSHOTS") {
+        return "Local Snapshots";
+    }
+    return source || "-";
+}
+
 function escapeHtml(value) {
     return String(value ?? "")
         .replaceAll("&", "&amp;")
@@ -460,5 +675,11 @@ function escapeHtml(value) {
         .replaceAll("\"", "&quot;")
         .replaceAll("'", "&#39;");
 }
+
+const defaultBacktestStart = new Date();
+defaultBacktestStart.setFullYear(defaultBacktestStart.getFullYear() - 1);
+document.getElementById("backtestStartDate").value = defaultBacktestStart.toISOString().slice(0, 10);
+document.getElementById("backtestTicker").value = "AAPL";
+document.getElementById("backtestAmount").value = "10000";
 
 loadDashboard(true);

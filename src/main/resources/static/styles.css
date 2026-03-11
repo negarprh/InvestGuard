@@ -170,6 +170,61 @@ main.container {
     font-size: 0.85rem;
 }
 
+.backtest-curve {
+    width: 100%;
+    height: 170px;
+    border-radius: 10px;
+    border: 1px solid rgba(182, 220, 246, 0.2);
+    background: rgba(6, 28, 43, 0.72);
+}
+
+.backtest-chart-wrap {
+    display: grid;
+    grid-template-columns: 76px 1fr;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.backtest-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    color: var(--text-soft);
+    font-size: 0.76rem;
+}
+
+.backtest-x-axis {
+    margin-top: 0.45rem;
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-soft);
+    font-size: 0.76rem;
+}
+
+.backtest-curve #backtestGrid line {
+    stroke: rgba(182, 220, 246, 0.18);
+    stroke-width: 0.32;
+    shape-rendering: crispEdges;
+}
+
+.backtest-curve #backtestBaseline {
+    stroke: rgba(245, 166, 35, 0.55);
+    stroke-width: 0.36;
+    stroke-dasharray: 1.6 1.6;
+}
+
+.backtest-curve #backtestCurveArea {
+    fill: rgba(35, 211, 192, 0.18);
+}
+
+.backtest-curve polyline {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 0.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 #tableSearch,
 #sortBy {
     min-width: 180px;
@@ -285,5 +340,13 @@ main.container {
 
     .table {
         font-size: 0.86rem;
+    }
+
+    .backtest-chart-wrap {
+        grid-template-columns: 1fr;
+    }
+
+    .backtest-axis {
+        flex-direction: row;
     }
 }

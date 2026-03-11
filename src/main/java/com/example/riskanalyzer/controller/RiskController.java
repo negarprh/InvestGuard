@@ -3,6 +3,8 @@ package com.example.riskanalyzer.controller;
 import com.example.riskanalyzer.dto.InvestmentRequest;
 import com.example.riskanalyzer.dto.PortfolioSummary;
 import com.example.riskanalyzer.dto.RiskSummary;
+import com.example.riskanalyzer.dto.BacktestRequest;
+import com.example.riskanalyzer.dto.BacktestResult;
 import com.example.riskanalyzer.model.Investment;
 import com.example.riskanalyzer.service.RiskService;
 import org.springframework.http.HttpStatus;
@@ -75,5 +77,14 @@ public class RiskController {
     public PortfolioSummary livePortfolioSummary() {
         List<RiskSummary> liveRisk = riskService.refreshRiskWithLiveData();
         return riskService.calculatePortfolioSummary(liveRisk);
+    }
+
+    @PostMapping("/portfolio/backtest")
+    public BacktestResult runBacktest(@RequestBody BacktestRequest request) throws IOException {
+        try {
+            return riskService.backtestPortfolio(request);
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
     }
 }

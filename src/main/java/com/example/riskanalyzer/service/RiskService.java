@@ -2,6 +2,9 @@ package com.example.riskanalyzer.service;
 
 import com.example.riskanalyzer.config.MarketDataProviderProperties;
 import com.example.riskanalyzer.config.RiskConfigProperties;
+import com.example.riskanalyzer.dto.BacktestPoint;
+import com.example.riskanalyzer.dto.BacktestRequest;
+import com.example.riskanalyzer.dto.BacktestResult;
 import com.example.riskanalyzer.dto.PortfolioSummary;
 import com.example.riskanalyzer.dto.RiskSummary;
 import com.example.riskanalyzer.model.Investment;
@@ -25,6 +28,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -42,6 +47,7 @@ public class RiskService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RiskService.class);
     private static final long RETRY_BACKOFF_MILLIS = 450;
+    private static final int MAX_BACKTEST_START_GAP_DAYS = 10;
 
     private final InvestmentRepository investmentRepository;
     private final MarketPriceSnapshotRepository marketPriceSnapshotRepository;
@@ -203,6 +209,122 @@ public class RiskService {
         );
     }
 
+    public BacktestResult backtestPortfolio(BacktestRequest request) throws IOException {
+        if (request == null) {
+            throw new IllegalArgumentException("Backtest request is required.");
+        }
+
+        String ticker = normaliseTicker(request.getTicker());
+        validateAmount(request.getAmount());
+        LocalDate startDate = parseBacktestDate(request.getStartDate(), "startDate");
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate endDate = hasText(request.getEndDate()) ? parseBacktestDate(request.getEndDate(), "endDate") : today;
+
+        if (startDate.isAfter(endDate)) {
+            throw new IllegalArgumentException("startDate must be on or before endDate.");
+        }
+        if (endDate.isAfter(today)) {
+            throw new IllegalArgumentException("endDate cannot be in the future.");
+        }
+
+        HistoricalSeries series = loadHistoricalSeriesForRange(ticker, startDate, endDate, true);
+        List<PricePoint> points = series.points();
+        if (points.size() < 2) {
+            throw new IllegalArgumentException("Backtest requires at least 2 daily prices in the selected range.");
+        }
+
+        LocalDate actualStartDate = points.get(0).date();
+        LocalDate actualEndDate = points.get(points.size() - 1).date();
+        boolean strictCoverageRequired = !"LOCAL_SNAPSHOTS".equalsIgnoreCase(series.source());
+        if (strictCoverageRequired && actualStartDate.isAfter(startDate.plusDays(MAX_BACKTEST_START_GAP_DAYS))) {
+            throw new IllegalArgumentException(
+                    "Performance Replay cannot run for requested start " + startDate
+                            + ". Earliest available price in this source is "
+                            + actualStartDate + " (" + series.source() + ")."
+            );
+        }
+        double startPrice = points.get(0).price();
+        double endPrice = points.get(points.size() - 1).price();
+        if (startPrice <= 0) {
+            throw new IllegalArgumentException("Invalid start price for backtest.");
+        }
+
+        double shares = request.getAmount() / startPrice;
+        List<BacktestPoint> history = new ArrayList<>();
+        List<Double> portfolioValues = new ArrayList<>();
+        double peakValue = Double.NEGATIVE_INFINITY;
+
+        for (PricePoint point : points) {
+            double value = shares * point.price();
+            peakValue = Math.max(peakValue, value);
+            double drawdown = peakValue > 0 ? (value - peakValue) / peakValue : 0;
+            history.add(new BacktestPoint(point.date(), point.price(), value, drawdown));
+            portfolioValues.add(value);
+        }
+
+        double currentValue = portfolioValues.get(portfolioValues.size() - 1);
+        double totalReturn = request.getAmount() > 0 ? (currentValue / request.getAmount()) - 1 : 0;
+
+        double days = Math.max(1, ChronoUnit.DAYS.between(actualStartDate, actualEndDate));
+        double years = days / 365.25;
+        double cagr;
+        if (years <= 0 || request.getAmount() <= 0 || currentValue <= 0) {
+            cagr = 0;
+        } else {
+            cagr = Math.pow(currentValue / request.getAmount(), 1.0 / years) - 1;
+        }
+
+        List<Double> dailyReturns = dailyReturnsFromPricePoints(points);
+        double annualizedVolatility = 0;
+        double annualizedReturn = 0;
+        double sharpeRatio = 0;
+        double valueAtRisk = 0;
+        double expectedShortfall = 0;
+        if (!dailyReturns.isEmpty()) {
+            int tradingDays = Math.max(riskConfig.getTradingDaysPerYear(), 1);
+            double meanDailyReturn = dailyReturns.stream().mapToDouble(Double::doubleValue).average().orElse(0);
+            annualizedReturn = Math.pow(1 + meanDailyReturn, tradingDays) - 1;
+            annualizedVolatility = calculateStandardDeviation(dailyReturns) * Math.sqrt(tradingDays);
+            sharpeRatio = annualizedVolatility > 0 ? (annualizedReturn - riskConfig.getRiskFreeRate()) / annualizedVolatility : 0;
+            valueAtRisk = computeValueAtRisk(dailyReturns, request.getAmount());
+            expectedShortfall = computeExpectedShortfall(dailyReturns, request.getAmount());
+        }
+
+        double maxDrawdown = computeMaxDrawdown(portfolioValues);
+        Map<LocalDate, Double> stockReturnsByDate = dailyReturnsByDateFromPricePoints(points);
+        String benchmark = benchmarkTicker();
+        double beta = 0;
+        try {
+            HistoricalSeries benchmarkSeries = loadHistoricalSeriesForRange(benchmark, actualStartDate, actualEndDate, false);
+            Map<LocalDate, Double> benchmarkReturns = dailyReturnsByDateFromPricePoints(benchmarkSeries.points());
+            beta = computeBeta(stockReturnsByDate, benchmarkReturns);
+        } catch (Exception exception) {
+            LOGGER.warn("Benchmark data unavailable for backtest {}. Beta will be 0.", benchmark, exception);
+        }
+
+        return new BacktestResult(
+                ticker,
+                actualStartDate,
+                actualEndDate,
+                request.getAmount(),
+                shares,
+                startPrice,
+                endPrice,
+                currentValue,
+                totalReturn,
+                cagr,
+                annualizedVolatility,
+                sharpeRatio,
+                valueAtRisk,
+                expectedShortfall,
+                maxDrawdown,
+                beta,
+                benchmark,
+                series.source(),
+                history
+        );
+    }
+
     private PortfolioSummary buildPortfolioSummary(List<RiskSummary> summaries) {
         if (summaries == null || summaries.isEmpty()) {
             return new PortfolioSummary(0, 0, 0, 0, 0, "Unrated", 0, null, null, benchmarkTicker(), Instant.now());
@@ -251,6 +373,128 @@ public class RiskService {
             total += extractor.extract(summary) * summary.getAmount();
         }
         return total / totalExposure;
+    }
+
+    private LocalDate parseBacktestDate(String rawValue, String fieldName) {
+        if (!hasText(rawValue)) {
+            throw new IllegalArgumentException(fieldName + " is required. Use format YYYY-MM-DD.");
+        }
+        try {
+            return LocalDate.parse(rawValue.trim());
+        } catch (DateTimeParseException exception) {
+            throw new IllegalArgumentException(fieldName + " must use format YYYY-MM-DD.");
+        }
+    }
+
+    private HistoricalSeries loadHistoricalSeriesForRange(String ticker,
+                                                          LocalDate startDate,
+                                                          LocalDate endDate,
+                                                          boolean allowQuoteSeeding) throws IOException {
+        if (!providerConfig.isFinnhubEnabled()) {
+            throw new IOException("Finnhub provider is disabled.");
+        }
+        if (!hasText(providerConfig.getFinnhubApiKey())) {
+            throw new IOException("FINNHUB_API_KEY is missing.");
+        }
+
+        String base = trimTrailingSlash(providerConfig.getFinnhubBaseUrl());
+        String token = urlEncode(providerConfig.getFinnhubApiKey());
+
+        if (!Boolean.FALSE.equals(candleEndpointAccessible)) {
+            try {
+                CandleSeries candleSeries = fetchCandleSeries(base, ticker, startDate, endDate, token);
+                candleEndpointAccessible = Boolean.TRUE;
+                persistPriceSnapshots(ticker, candleSeries.pricePoints());
+                return new HistoricalSeries(candleSeries.pricePoints(), "FINNHUB_CANDLE");
+            } catch (IOException exception) {
+                if (isCandleAccessDenied(exception)) {
+                    candleEndpointAccessible = Boolean.FALSE;
+                    LOGGER.warn("Finnhub candle endpoint unavailable for current key. Falling back to local snapshots.");
+                } else {
+                    throw exception;
+                }
+            }
+        }
+
+        if (allowQuoteSeeding && endDate.equals(LocalDate.now(ZoneOffset.UTC))) {
+            seedSnapshotFromQuote(ticker, base, token, endDate);
+        }
+
+        List<PricePoint> localPoints = loadLocalPricePoints(ticker, startDate, endDate);
+        if (localPoints.size() < 2) {
+            throw buildCoverageException(ticker, startDate, endDate);
+        }
+        return new HistoricalSeries(localPoints, "LOCAL_SNAPSHOTS");
+    }
+
+    private IllegalArgumentException buildCoverageException(String ticker, LocalDate requestedStart, LocalDate requestedEnd) {
+        List<MarketPriceSnapshot> allSnapshots = marketPriceSnapshotRepository.findAllByTickerIgnoreCaseOrderByTradingDateAsc(ticker);
+        if (allSnapshots.isEmpty()) {
+            return new IllegalArgumentException(
+                    "Performance Replay cannot run yet for " + ticker
+                            + ". No local price history exists for this ticker, and Finnhub candle access is unavailable for your key."
+            );
+        }
+
+        LocalDate availableStart = allSnapshots.get(0).getTradingDate();
+        LocalDate availableEnd = allSnapshots.get(allSnapshots.size() - 1).getTradingDate();
+        return new IllegalArgumentException(
+                "Performance Replay cannot run for requested range "
+                        + requestedStart + " to " + requestedEnd
+                        + ". Available local history for " + ticker
+                        + " is " + availableStart + " to " + availableEnd
+                        + ". Use a date range within that window, or use a Finnhub plan with /stock/candle access."
+        );
+    }
+
+    private List<PricePoint> loadLocalPricePoints(String ticker, LocalDate startDate, LocalDate endDate) {
+        return marketPriceSnapshotRepository
+                .findAllByTickerIgnoreCaseAndTradingDateBetweenOrderByTradingDateAsc(ticker, startDate, endDate)
+                .stream()
+                .map(snapshot -> new PricePoint(snapshot.getTradingDate(), snapshot.getClosePrice()))
+                .collect(Collectors.toList());
+    }
+
+    private void seedSnapshotFromQuote(String ticker, String base, String token, LocalDate endDate) {
+        try {
+            JsonNode quoteNode = executeJsonGet(base + "/quote?symbol=" + urlEncode(ticker) + "&token=" + token);
+            Double currentPrice = nullableDouble(quoteNode.path("c"));
+            Double previousClose = nullableDouble(quoteNode.path("pc"));
+            if (currentPrice != null && currentPrice > 0) {
+                persistPriceSnapshot(ticker, endDate, currentPrice);
+            }
+            if (previousClose != null && previousClose > 0) {
+                persistPriceSnapshot(ticker, endDate.minusDays(1), previousClose);
+            }
+        } catch (IOException exception) {
+            LOGGER.warn("Unable to seed local quote snapshots for {}", ticker, exception);
+        }
+    }
+
+    private List<Double> dailyReturnsFromPricePoints(List<PricePoint> points) {
+        List<Double> returns = new ArrayList<>();
+        for (int i = 1; i < points.size(); i++) {
+            double previous = points.get(i - 1).price();
+            double current = points.get(i).price();
+            if (previous <= 0) {
+                continue;
+            }
+            returns.add((current - previous) / previous);
+        }
+        return returns;
+    }
+
+    private Map<LocalDate, Double> dailyReturnsByDateFromPricePoints(List<PricePoint> points) {
+        Map<LocalDate, Double> returnsByDate = new LinkedHashMap<>();
+        for (int i = 1; i < points.size(); i++) {
+            double previous = points.get(i - 1).price();
+            double current = points.get(i).price();
+            if (previous <= 0) {
+                continue;
+            }
+            returnsByDate.put(points.get(i).date(), (current - previous) / previous);
+        }
+        return returnsByDate;
     }
 
     private MarketData fetchMarketData(String ticker) throws IOException {
@@ -311,49 +555,14 @@ public class RiskService {
     private MarketData fetchFromFinnhub(String ticker, LocalDate startDate, LocalDate endDate) throws IOException {
         String base = trimTrailingSlash(providerConfig.getFinnhubBaseUrl());
         String token = urlEncode(providerConfig.getFinnhubApiKey());
-        long from = startDate.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
-        long to = endDate.plusDays(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC) - 1;
 
         if (Boolean.FALSE.equals(candleEndpointAccessible)) {
             return fetchFromFinnhubUsingQuoteOnly(ticker, base, token, endDate);
         }
 
         try {
-            JsonNode candleNode = executeJsonGet(base + "/stock/candle?symbol=" + urlEncode(ticker) + "&resolution=D&from=" + from + "&to=" + to + "&token=" + token);
-            if (candleNode.has("error")) {
-                throw new IOException("Finnhub error: " + candleNode.path("error").asText());
-            }
-            if (!"ok".equalsIgnoreCase(candleNode.path("s").asText())) {
-                throw new IOException("Finnhub candle data unavailable");
-            }
-
-            JsonNode closeArray = candleNode.path("c");
-            JsonNode timeArray = candleNode.path("t");
-            JsonNode volumeArray = candleNode.path("v");
-            if (!closeArray.isArray() || !timeArray.isArray() || closeArray.isEmpty() || timeArray.isEmpty()) {
-                throw new IOException("Finnhub returned invalid candle payload");
-            }
-
-            int size = Math.min(closeArray.size(), timeArray.size());
-            List<PricePoint> pricePoints = new ArrayList<>();
-            for (int i = 0; i < size; i++) {
-                JsonNode closeNode = closeArray.get(i);
-                JsonNode epochNode = timeArray.get(i);
-                if (closeNode == null || closeNode.isNull() || epochNode == null || epochNode.isNull()) {
-                    continue;
-                }
-                double close = closeNode.asDouble(Double.NaN);
-                long epoch = epochNode.asLong(Long.MIN_VALUE);
-                if (!Double.isFinite(close) || close <= 0 || epoch == Long.MIN_VALUE) {
-                    continue;
-                }
-                LocalDate date = Instant.ofEpochSecond(epoch).atZone(ZoneOffset.UTC).toLocalDate();
-                pricePoints.add(new PricePoint(date, close));
-            }
-
-            if (pricePoints.size() < 2) {
-                throw new IOException("Not enough Finnhub history to compute returns");
-            }
+            CandleSeries candleSeries = fetchCandleSeries(base, ticker, startDate, endDate, token);
+            List<PricePoint> pricePoints = candleSeries.pricePoints();
 
             JsonNode quoteNode = executeJsonGet(base + "/quote?symbol=" + urlEncode(ticker) + "&token=" + token);
             JsonNode profileNode = fetchProfileNode(base, ticker, token);
@@ -371,7 +580,7 @@ public class RiskService {
                     dayChangePercent,
                     nullableDouble(quoteNode.path("h")),
                     nullableDouble(quoteNode.path("l")),
-                    extractLatestVolume(volumeArray),
+                    extractLatestVolume(candleSeries.volumeArray()),
                     marketCapFromProfile(profileNode),
                     currencyFromProfile(profileNode, ticker)
             );
@@ -387,6 +596,53 @@ public class RiskService {
             }
             throw exception;
         }
+    }
+
+    private CandleSeries fetchCandleSeries(String base,
+                                           String ticker,
+                                           LocalDate startDate,
+                                           LocalDate endDate,
+                                           String token) throws IOException {
+        long from = startDate.atStartOfDay().toEpochSecond(ZoneOffset.UTC);
+        long to = endDate.plusDays(1).atStartOfDay().toEpochSecond(ZoneOffset.UTC) - 1;
+        JsonNode candleNode = executeJsonGet(
+                base + "/stock/candle?symbol=" + urlEncode(ticker) + "&resolution=D&from=" + from + "&to=" + to + "&token=" + token
+        );
+        if (candleNode.has("error")) {
+            throw new IOException("Finnhub error: " + candleNode.path("error").asText());
+        }
+        if (!"ok".equalsIgnoreCase(candleNode.path("s").asText())) {
+            throw new IOException("Finnhub candle data unavailable");
+        }
+
+        JsonNode closeArray = candleNode.path("c");
+        JsonNode timeArray = candleNode.path("t");
+        JsonNode volumeArray = candleNode.path("v");
+        if (!closeArray.isArray() || !timeArray.isArray() || closeArray.isEmpty() || timeArray.isEmpty()) {
+            throw new IOException("Finnhub returned invalid candle payload");
+        }
+
+        int size = Math.min(closeArray.size(), timeArray.size());
+        List<PricePoint> pricePoints = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            JsonNode closeNode = closeArray.get(i);
+            JsonNode epochNode = timeArray.get(i);
+            if (closeNode == null || closeNode.isNull() || epochNode == null || epochNode.isNull()) {
+                continue;
+            }
+            double close = closeNode.asDouble(Double.NaN);
+            long epoch = epochNode.asLong(Long.MIN_VALUE);
+            if (!Double.isFinite(close) || close <= 0 || epoch == Long.MIN_VALUE) {
+                continue;
+            }
+            LocalDate date = Instant.ofEpochSecond(epoch).atZone(ZoneOffset.UTC).toLocalDate();
+            pricePoints.add(new PricePoint(date, close));
+        }
+
+        if (pricePoints.size() < 2) {
+            throw new IOException("Not enough Finnhub history to compute returns");
+        }
+        return new CandleSeries(pricePoints, volumeArray);
     }
 
     private MarketData fetchFromFinnhubUsingQuoteOnly(String ticker, String base, String token, LocalDate endDate) throws IOException {
@@ -851,10 +1107,14 @@ public class RiskService {
 
     private record PricePoint(LocalDate date, double price) { }
 
+    private record CandleSeries(List<PricePoint> pricePoints, JsonNode volumeArray) { }
+
     private record MarketData(List<Double> closingPrices,
                               List<Double> dailyReturns,
                               Map<LocalDate, Double> dailyReturnsByDate,
                               QuoteSnapshot quoteSnapshot) { }
+
+    private record HistoricalSeries(List<PricePoint> points, String source) { }
 
     private record CacheEntry<T>(T value, Instant fetchedAt) { }
 
