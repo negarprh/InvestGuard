@@ -1,9 +1,18 @@
+<<<<<<< HEAD
 # InvestGuard – Portfolio Risk Intelligence Platform
+=======
+# InvestGuard - Live Investment Risk Analysis
+>>>>>>> bb29669f8b26113a8048a8a7cfb33503e2fc4165
 
 InvestGuard is a **backend-driven portfolio risk analytics platform** built with Spring Boot.
 It ingests live market data, computes advanced financial risk metrics, and provides **historical portfolio simulation (backtesting)** to evaluate investment strategies over time.
 
+<<<<<<< HEAD
 The application demonstrates **real-world backend engineering challenges** including:
+=======
+![InvestGuard Dashboard 1](Mainpage1.png)
+![InvestGuard Dashboard 2](MainPage2.png)
+>>>>>>> bb29669f8b26113a8048a8a7cfb33503e2fc4165
 
 - external financial data ingestion
 - time-series analytics
