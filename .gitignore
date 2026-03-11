@@ -40,3 +40,4 @@ build/
 # Environment & config files
 *.env
 application.properties
+data/*.mv.db

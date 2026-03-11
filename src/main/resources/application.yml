@@ -1,0 +1,37 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  datasource:
+    url: jdbc:h2:file:./data/investguard;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+
+investguard:
+  data:
+    finnhub-enabled: ${INVESTGUARD_FINNHUB_ENABLED:true}
+    finnhub-base-url: ${INVESTGUARD_FINNHUB_BASE_URL:https://finnhub.io/api/v1}
+    finnhub-api-key: ${FINNHUB_API_KEY:}
+    http-timeout-seconds: ${INVESTGUARD_PROVIDER_HTTP_TIMEOUT_SECONDS:15}
+  risk:
+    trading-days-per-year: ${INVESTGUARD_TRADING_DAYS:252}
+    history-days: ${INVESTGUARD_HISTORY_DAYS:365}
+    risk-free-rate: ${INVESTGUARD_RISK_FREE_RATE:0.015}
+    var-percentile: ${INVESTGUARD_VAR_PERCENTILE:0.05}
+    low-volatility-threshold: ${INVESTGUARD_LOW_VOL_THRESHOLD:0.12}
+    moderate-volatility-threshold: ${INVESTGUARD_MOD_VOL_THRESHOLD:0.25}
+    low-drawdown-threshold: ${INVESTGUARD_LOW_DRAWDOWN_THRESHOLD:0.15}
+    moderate-drawdown-threshold: ${INVESTGUARD_MOD_DRAWDOWN_THRESHOLD:0.30}
+    low-sharpe-threshold: ${INVESTGUARD_LOW_SHARPE_THRESHOLD:1.0}
+    benchmark-ticker: ${INVESTGUARD_BENCHMARK_TICKER:SPY}
+    quote-cache-ttl-seconds: ${INVESTGUARD_QUOTE_CACHE_TTL_SECONDS:300}
+    stale-cache-max-age-minutes: ${INVESTGUARD_STALE_CACHE_MAX_AGE_MINUTES:180}
+    provider-retry-attempts: ${INVESTGUARD_PROVIDER_RETRY_ATTEMPTS:2}

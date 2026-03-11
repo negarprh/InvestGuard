@@ -1,53 +1,79 @@
 package com.example.riskanalyzer.controller;
 
+import com.example.riskanalyzer.dto.InvestmentRequest;
+import com.example.riskanalyzer.dto.PortfolioSummary;
+import com.example.riskanalyzer.dto.RiskSummary;
 import com.example.riskanalyzer.model.Investment;
 import com.example.riskanalyzer.service.RiskService;
-import com.example.riskanalyzer.repository.InvestmentRepository;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api")
-@CrossOrigin(origins = "*") // ✅ Allows frontend to call API from different domains
+@CrossOrigin(origins = "*")
 public class RiskController {
-    private final RiskService riskService;
-    private final InvestmentRepository investmentRepository;
 
-    // ✅ Constructor to inject dependencies
-    public RiskController(RiskService riskService, InvestmentRepository investmentRepository) {
+    private final RiskService riskService;
+
+    public RiskController(RiskService riskService) {
         this.riskService = riskService;
-        this.investmentRepository = investmentRepository;
     }
 
-    // ✅ Fetch stock data and add investment
     @PostMapping("/add-stock")
-    public String addStockInvestment(@RequestParam String ticker, @RequestParam double amount) {
+    public ResponseEntity<RiskSummary> addStockInvestment(@RequestParam String ticker, @RequestParam double amount) throws IOException {
         try {
             Investment investment = riskService.fetchStockData(ticker, amount);
-            return "Investment added: " + ticker;
-        } catch (IOException e) {
-            return "Error fetching stock data: " + e.getMessage();
+            return ResponseEntity.status(HttpStatus.CREATED).body(riskService.toRiskSummary(investment));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
         }
     }
 
-    // ✅ Manually add investment to database
     @PostMapping("/add-manual")
-    public String addManualInvestment(@RequestBody Investment investment) {
-        riskService.saveInvestment(investment);
-        return "Investment added: " + investment.getTicker();
+    public ResponseEntity<RiskSummary> addManualInvestment(@RequestBody InvestmentRequest request) {
+        try {
+            Investment investment = new Investment(request.getTicker(), request.getAmount(), request.getPastReturns());
+            Investment saved = riskService.saveInvestment(investment);
+            return ResponseEntity.status(HttpStatus.CREATED).body(riskService.toRiskSummary(saved));
+        } catch (IllegalArgumentException exception) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, exception.getMessage(), exception);
+        }
     }
 
-    // ✅ Retrieve all investments from database
     @GetMapping("/investments")
     public List<Investment> getInvestments() {
         return riskService.getAllInvestments();
     }
 
-    // ✅ Correct `/risk` endpoint - fetches all risk data from DB
     @GetMapping("/risk")
-    public List<Map<String, Object>> calculateRisk() {
+    public List<RiskSummary> calculateRisk() {
         return riskService.calculateRisk();
+    }
+
+    @GetMapping("/risk/live")
+    public List<RiskSummary> refreshAndCalculateRisk() {
+        return riskService.refreshRiskWithLiveData();
+    }
+
+    @GetMapping("/portfolio/summary")
+    public PortfolioSummary portfolioSummary() {
+        return riskService.calculatePortfolioSummary();
+    }
+
+    @GetMapping("/portfolio/summary/live")
+    public PortfolioSummary livePortfolioSummary() {
+        List<RiskSummary> liveRisk = riskService.refreshRiskWithLiveData();
+        return riskService.calculatePortfolioSummary(liveRisk);
     }
 }
