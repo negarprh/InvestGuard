@@ -14,6 +14,17 @@ The application demonstrates **real-world backend engineering challenges** inclu
 
 ---
 
+## Screenshots
+
+![InvestGuard Dashboard](mainpage1.png)
+
+![Portfolio Replay Simulation](mainpage2.png)
+
+![Risk Analytics Board](mainpage3.png)
+
+---
+
+
 ## Key Capabilities
 
 ### Real-Time Market Data
@@ -85,16 +96,6 @@ Simulation results include:
 - maximum drawdown
 
 This feature transforms the project from a simple dashboard into a **mini portfolio analytics platform**.
-
----
-
-## Screenshots
-
-![InvestGuard Dashboard](mainpage1.png)
-
-![Portfolio Replay Simulation](mainpage2.png)
-
-![Risk Analytics Board](mainpage3.png)
 
 ---
 
